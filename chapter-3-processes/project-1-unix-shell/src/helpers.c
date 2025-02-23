@@ -4,8 +4,6 @@
 
 #include "helpers.h"
 
-#define MAX_TOKENS 100  // Maximum number of tokens
-
 // Function to split a string by whitespace
 char **split_by_whitespace(const char *input, int *count) {
     if (input == NULL) {

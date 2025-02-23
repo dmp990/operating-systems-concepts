@@ -7,30 +7,38 @@
 
 #include "helpers.h"
 
-#define MAX_LINE 80 /* The maximum length command */
 
 int main(int argc, char *argv[])
 {
-    char *most_recent_command[MAX_LINE/2 + 1] = {NULL};
-    char *args[MAX_LINE/2 + 1];
+    int has_recent = 0;
     int should_run = 1;
+
+    char *most_recent_command[MAX_TOKENS] = malloc(MAX_TOKENS * sizeof(char *));
+    if (!most_recent_command) {
+        perror("Failed to allocate memory");
+        exit(1);
+    }
+
     while (should_run)
     {
         int recent_requested = 0;
         int should_run_in_background = 0;
+
         printf("shell>");
         fflush(stdout);
 
-        char command[100];
+        char command[MAX_LINE];
         fgets(command, sizeof(command), stdin);
 
+        // Tokenize user input
         int count = 0;
         char **tokens = split_by_whitespace(command, &count);
+
 
         if (strcmp(tokens[0], "!!") == 0)
         {
             // User requested most recent command
-            if (most_recent_command[0] == NULL)
+            if (!has_recent)
             {
                 perror("No commands in history\n");
                 free_tokens(tokens);
@@ -51,15 +59,16 @@ int main(int argc, char *argv[])
         if (!recent_requested)
         {
             // Store current as recent
-            for (int i = 0; i < 41; i++)
-            {
+            for (int i = 0; i < MAX_TOKENS; i++) {
                 free(most_recent_command[i]);
+                most_recent_command[i] = NULL;
             }
 
             for (int i = 0; i < count; i++)
             {
                 most_recent_command[i] = strdup(tokens[i]);
             }
+            has_recent = 1;
         }
 
         /**
@@ -74,6 +83,7 @@ int main(int argc, char *argv[])
             // Child Process
             if (recent_requested)
             {
+                free_tokens(tokens);
                 if (execvp(most_recent_command[0], most_recent_command) == -1)
                 {
                     perror("execvp failed\n");
