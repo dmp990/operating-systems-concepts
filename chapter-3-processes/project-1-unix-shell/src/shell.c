@@ -7,11 +7,16 @@
 
 #include "helpers.h"
 
+#define MAX_LINE 80 /* The maximum length command */
+
 int main(int argc, char *argv[])
 {
+    char *most_recent_command[MAX_LINE/2 + 1] = {NULL};
+    char *args[MAX_LINE/2 + 1];
     int should_run = 1;
     while (should_run)
     {
+        int recent_requested = 0;
         int should_run_in_background = 0;
         printf("shell>");
         fflush(stdout);
@@ -22,6 +27,18 @@ int main(int argc, char *argv[])
         int count = 0;
         char **tokens = split_by_whitespace(command, &count);
 
+        if (strcmp(tokens[0], "!!") == 0)
+        {
+            // User requested most recent command
+            if (most_recent_command[0] == NULL)
+            {
+                perror("No commands in history\n");
+                free_tokens(tokens);
+                continue;
+            }
+            recent_requested = 1;
+        }
+
         char *last_token = tokens[count - 1];
 
         if (strcmp(last_token, "&") == 0)
@@ -29,6 +46,20 @@ int main(int argc, char *argv[])
             should_run_in_background = 1;
             // Remove last token, replace with NULL for now
             tokens[count - 1] = NULL;
+        }
+
+        if (!recent_requested)
+        {
+            // Store current as recent
+            for (int i = 0; i < 41; i++)
+            {
+                free(most_recent_command[i]);
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                most_recent_command[i] = strdup(tokens[i]);
+            }
         }
 
         /**
@@ -41,10 +72,21 @@ int main(int argc, char *argv[])
         if (pid == 0)
         {
             // Child Process
-            if (execvp(tokens[0], tokens) == -1)
+            if (recent_requested)
             {
-                perror("execvp failed\n");
-                exit(1);
+                if (execvp(most_recent_command[0], most_recent_command) == -1)
+                {
+                    perror("execvp failed\n");
+                    exit(1);
+                }
+            }
+            else
+            {
+                if (execvp(tokens[0], tokens) == -1)
+                {
+                    perror("execvp failed\n");
+                    exit(1);
+                }
             }
         }
         else if (pid > 0)
