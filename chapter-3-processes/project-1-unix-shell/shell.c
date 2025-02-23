@@ -73,11 +73,11 @@ int main(int argc, char *argv[])
         char **tokens = split_by_whitespace(command, &count);
 
         /**
-* After reading user input, the steps are:
-* (1) fork a child process using fork()
-* (2) the child process will invoke execvp()
-* (3) parent will invoke wait() unless command included &
-*/
+        * After reading user input, the steps are:
+        * (1) fork a child process using fork()
+        * (2) the child process will invoke execvp()
+        * (3) parent will invoke wait() unless command included &
+        */
         pid_t pid = fork();
         if (pid == 0)
         {
@@ -89,6 +89,7 @@ int main(int argc, char *argv[])
         }
         else if (pid > 0)
         {
+            // Parent process
             printf("Parent process. Wating for child with pid %d to end\n", pid);
             wait(NULL);
         } else {
