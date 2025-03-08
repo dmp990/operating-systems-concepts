@@ -1,11 +1,19 @@
-#ifndef HELPERS_H
-#define HELPERS_H
+#ifndef helpers_h
+#define helpers_h
 
-#define MAX_LINE 80 /* The maximum length command */
-#define MAX_TOKENS MAX_LINE / 2 + 1  // Maximum number of tokens
+#define MAX_COMMAND_LENGTH 100                       // Maximum length of command
+#define MAX_ARGS_LENGTH (MAX_COMMAND_LENGTH / 2 + 1) // Maximum number of args
 
-// prototypes
-char **split_by_whitespace(const char *input, int *count);
-void free_tokens(char **tokens);
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-#endif // HELPERS_H
+// Prototypes
+int get_user_input(char *command);
+int tokenize(char *command, char *tokens[], char *delimiters, int *num_tokens);
+void execute_command(char *tokens[], int num_tokens);
+
+#endif // helpers_h
