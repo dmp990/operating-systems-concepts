@@ -34,7 +34,7 @@ int tokenize(char *command, char *tokens[], char *delimiters, int *num_tokens)
         {
             free(tokens[i]);
         }
-        tokens[i] = (char *)malloc(sizeof(char) * (strlen(token) + 1));
+        tokens[i] = (char *) malloc(sizeof(char) * (strlen(token) + 1));
         strcpy(tokens[i++], token);
         token = strtok(NULL, delimiters);
     }
@@ -60,7 +60,9 @@ void execute_command(char *tokens[], int num_tokens)
     }
 
     // Assume either one of < or > or | or none of these will be present in a command
-    int input_redirection = -1, output_redirection = -1;
+    int input_redirection = -1, output_redirection = -1, pipe_pos = -1;
+    char *left_command[MAX_ARGS_LENGTH],
+        *right_command[MAX_ARGS_LENGTH]; // left of pipe, right of pipe
 
     char filename[100];
 
@@ -75,6 +77,10 @@ void execute_command(char *tokens[], int num_tokens)
         {
             output_redirection = i;
             strcpy(filename, tokens[i + 1]);
+        }
+        if (strcmp(tokens[i], "|") == 0 && i + 1 < num_tokens)
+        {
+            pipe_pos = i;
         }
     }
 
@@ -104,6 +110,58 @@ void execute_command(char *tokens[], int num_tokens)
         close(fd);
 
         tokens[output_redirection] = NULL;
+    }
+
+    // Handle pipe, again assuming either one of <,>,| or none of these present
+    if (pipe_pos != -1)
+    {
+        int pipe_fd[2];
+
+        pipe(pipe_fd); // Pretend this will never fail
+
+        for (int i = 0; i < pipe_pos; i++)
+        {
+            left_command[i] = tokens[i];
+        }
+        left_command[pipe_pos] = NULL;
+
+        for (int i = pipe_pos + 1, j = 0; i < num_tokens; i++, j++)
+        {
+            right_command[j] = tokens[i];
+        }
+        right_command[num_tokens - pipe_pos - 1] = NULL;
+
+        pid_t pid1 = fork();
+        if (pid1 == 0)
+        {
+            // Writing process
+            close(pipe_fd[0]);
+            dup2(pipe_fd[1], STDOUT_FILENO);
+            close(pipe_fd[1]);
+            execvp(left_command[0], left_command);
+            perror("execvp");
+            exit(1);
+        }
+
+        pid_t pid2 = fork();
+        if (pid2 == 0)
+        {
+            // Reading process
+            close(pipe_fd[1]);
+            dup2(pipe_fd[0], STDIN_FILENO);
+            close(pipe_fd[0]);
+            execvp(right_command[0], right_command);
+            perror("execvp");
+            exit(1);
+        }
+
+        close(pipe_fd[0]);
+        close(pipe_fd[1]);
+
+        waitpid(pid1, NULL, 0);
+        waitpid(pid2, NULL, 0);
+
+        return;
     }
 
     pid_t pid = fork();
